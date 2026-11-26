@@ -75,4 +75,4 @@ The system is organized into two modular workflows inside n8n:
 ## 👨‍💻 Author
 
 **Adham Abbas** — Computer Science & AI Student | Automation & AI Workflows Engineer  
-🔗 GitHub: [@adhmmabbas](https://github.com/adhmmabbas)
+🔗 GitHub: [@adhmmabbas](https://github.com/adhmabbas)
