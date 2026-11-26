@@ -1,0 +1,167 @@
+{
+  "name": "Fenjan Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        -128
+      ],
+      "id": "2f1e5466-0bae-4d0c-9dd9-e8b2e9f25d8e",
+      "name": "On Any Error"
+    },
+    {
+      "parameters": {
+        "jsCode": "const e = $input.first().json;\nconst wf = e.workflow?.name || 'Unknown workflow';\nconst node = e.execution?.lastNodeExecuted || 'Unknown node';\nconst msg = String(e.execution?.error?.message || 'Unknown error').slice(0, 400);\nconst now = $now.setZone('Africa/Cairo').toFormat('yyyy-MM-dd HH:mm');\nreturn [{\n  json: {\n    timestamp: now,\n    workflow: wf,\n    node: node,\n    error: msg,\n    telegram_text: `⚠️ Error in ${wf}\\nNode: ${node}\\nReason: ${msg}`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        -128
+      ],
+      "id": "d97b2b45-b4fb-48ae-b05c-832462d06436",
+      "name": "Format Error"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 210060267,
+          "mode": "list",
+          "cachedResultName": "Errors"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "time": "={{ $json.timestamp }}",
+            "workflow": "={{ $json.workflow }}",
+            "node": "={{ $json.node }}",
+            "message": "={{ $json.error }}",
+            "execution_url": "={{ $('On Any Error').item.json.execution.url }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "time",
+              "displayName": "time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow",
+              "displayName": "workflow",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "node",
+              "displayName": "node",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "execution_url",
+              "displayName": "execution_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        96,
+        -224
+      ],
+      "id": "0647bef3-f635-4c1c-bd9a-96c6aa7385c5",
+      "name": "Log Error"
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_CHATID",
+        "text": "={{ $json.telegram_text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        96,
+        -48
+      ],
+      "id": "02217bd7-2348-40ea-9c03-c381438127f7",
+      "name": "Error Alert",
+      "webhookId": "f0b86c82-c568-40e7-acdd-da91213b63c4"
+    }
+  ],
+  "connections": {
+    "On Any Error": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Error": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": []
+}

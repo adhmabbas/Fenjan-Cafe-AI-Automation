@@ -1,0 +1,1793 @@
+{
+  "name": "Fenjan DM Orders",
+  "nodes": [
+    {
+      "parameters": {
+        "appId": "2425025161655181",
+        "object": "page",
+        "fields": "={{ ['messages'] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.facebookTrigger",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        -128
+      ],
+      "id": "11fa4b39-86d8-47fd-b782-06500fd2cace",
+      "name": "Messenger Trigger",
+      "webhookId": "ebe8a596-6237-4d6a-90ca-b685f9a9219e"
+    },
+    {
+      "parameters": {
+        "appId": "2425025161655181",
+        "object": "instagram",
+        "fields": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.facebookTrigger",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        96
+      ],
+      "id": "7a353933-7a03-4a60-8b9d-6c5dce9ed54d",
+      "name": "Instagram Trigger",
+      "webhookId": "f6dc87d8-779d-41c0-b3aa-410903fcfb46"
+    },
+    {
+      "parameters": {
+        "jsCode": "const platform = $prevNode.name.includes('Instagram') ? 'Instagram' : 'Messenger';\nconst out = [];\nfor (const item of $input.all()) {\n  for (const m of (item.json.messaging || [])) {\n    if (!m.message || m.message.is_echo || !m.message.text) continue;\n    out.push({\n      json: {\n        platform,\n        sender_id: String(m.sender.id),\n        text: String(m.message.text).slice(0, 1000)\n      }\n    });\n  }\n}\nreturn out.slice(0, 1);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        -32
+      ],
+      "id": "14dcb4f5-bbad-417f-8c63-def7f5766023",
+      "name": "Read Message"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 331142039,
+          "mode": "list",
+          "cachedResultName": "Menu"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -64,
+        -32
+      ],
+      "id": "22f05d88-611d-4f3a-8e48-654467221ee7",
+      "name": "Read Menu",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 579198438,
+          "mode": "list",
+          "cachedResultName": "Carts"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "customer_id",
+              "lookupValue": "={{ $('Read Message').first().json.sender_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        160,
+        -48
+      ],
+      "id": "1469873f-f18c-4fb1-aba5-e03bde23769e",
+      "name": "Find Cart",
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $('Read Message').first().json;\nconst menu = $('Read Menu').all().map(i => i.json).filter(m => String(m.item_id || '').trim());\nconst cartRow = $('Find Cart').all().map(i => i.json).find(r => String(r.customer_id) === msg.sender_id && r.status === 'open');\n\nconst prompt = [\n  'You take orders for Fenjan, a café in Cairo, over Messenger and Instagram DMs. Customers write in Egyptian Arabic, English or Franco-Arabic (e.g. \"3ayez 2 latte\").',\n  'Return ONLY JSON: {\"intent\":\"greeting|menu|order|details|confirm|cancel|question|human\", \"items\":[{\"item_id\":\"D01\",\"qty\":1}],\"remove\":[\"D01\"],\"replace_cart\": false, \"fulfilment\":\"pickup|delivery|\", \"address\":\"\",\"language\": \"ar|en\", \"answer\":\"\"}',\n  'intent rules: \"order\" = adding or changing items (put them in items, use only item_id values from MENU, map nicknames using the words field). \"remove\" lists items to take out. replace_cart=true only if the customer clearly starts a new order.',\n  '\"details\" = only says pickup/delivery or gives an address. \"confirm\" agrees to place the current cart (yes, ok, confirm, تمام, أكد, ماشي). \"cancel\" = wants to cancel. \"human\" = complaint, problem, or asks for a person. \"menu\" = asks what you have or prices. \"greeting\" = only hello.',\n  '\"question\" = anything else: write a short friendly answer (max 2 sentences, same language, only facts from MENU) in answer. Never invent items or prices. fulfilment and address can be filled with any intent if mentioned. language = ar if the customer writes Arabic or Franco, else en.',\n  'MENU: ' + JSON.stringify(menu.map(m => ({ id: m.item_id, en: m.name_en, ar: m.name_ar, price: m.price_egp, available: m.available, words: m.keywords }))),\n  'CURRENT CART: ' + (cartRow ? cartRow.items_json : '[]') + ' | fulfilment: ' + (cartRow?.fulfilment || 'unknown'),\n  'CUSTOMER MESSAGE: ' + msg.text,\n].join('\\n');\n\nreturn [{ json: { prompt } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        -64
+      ],
+      "id": "6ff29151-aee9-4ac7-8244-59c734f7ddb7",
+      "name": "Build AI Prompt"
+    },
+    {
+      "parameters": {
+        "jsCode": "const DELIVERY_FEE = 25, OPEN_HOUR = 8, CLOSE_HOUR = 24, MAX_QTY = 20;\nconst msg = $('Read Message').first().json;\nconst menu = $('Read Menu').all().map(i => i.json).filter(m => String(m.item_id || '').trim());\nconst byId = Object.fromEntries(menu.map(m => [String(m.item_id).trim().toUpperCase(), m]));\nconst isOn = m => /^(yes|true|1|y)$/i.test(String(m.available ?? 'yes').trim());\n\nconst cartRow = $('Find Cart').all().map(i => i.json).find(r => String(r.customer_id) === msg.sender_id && r.status === 'open');\nlet cart = [];\ntry { cart = cartRow ? JSON.parse(cartRow.items_json || '[]') : []; } catch (e) { cart = []; }\nlet fulfilment = cartRow?.fulfilment || '', address = cartRow?.address || '';\n\nlet ai = null;\ntry {\n  ai = JSON.parse(($json.text || '').replace(/```json|```/g, '').trim());\n} catch (e) { ai = null; }\n\nconst ar = ai ? ai.language === 'ar' : /[\\u0600-\\u06FF]/.test(msg.text);\nconst t = (en, a) => ar ? a : en;\nconst EGP = t('EGP', 'ج.م');\n\nif (ai && ['pickup', 'delivery'].includes(ai.fulfilment)) fulfilment = ai.fulfilment;\nif (ai && String(ai.address || '').trim().length > 5) address = String(ai.address).trim().slice(0, 200);\n\nconst sub = () => cart.reduce((s, l) => s + l.qty * l.price, 0);\nconst fee = () => fulfilment === 'delivery' ? DELIVERY_FEE : 0;\n\nconst cartText = () => cart.map(l => `${l.qty}x ${ar ? l.name_ar : l.name} - ${l.qty * l.price} ${EGP}`).join('\\n')\n  + (fee() ? `\\n${t('Delivery', 'التوصيل')} - ${fee()} ${EGP}` : '')\n  + `\\n${t('Total', 'الإجمالي')}: ${sub() + fee()} ${EGP}`;\n\nconst menuText = () => {\n  const cats = {};\n  for (const m of menu.filter(isOn)) {\n    (cats[m.category] = cats[m.category] || []).push(`${m.item_id} ${ar ? m.name_ar : m.name_en} - ${m.price_egp}`);\n  }\n  return t('Fenjan menu (EGP)', 'منيو فنجان (بالجنيه)')\n    + Object.entries(cats).map(([c, l]) => `\\n\\n${c}\\n` + l.join('\\n')).join('')\n    + t('\\n\\nJust type your order, e.g. \"2 spanish latte and a croissant, delivery\".', '\\n\\nاكتب طلبك، مثلاً: 2 سبانش لاتيه وكرواسون توصيل.');\n};\n\nconst nextStep = () => !fulfilment\n  ? t('Pickup or delivery?', 'استلام من المحل ولا توصيل؟')\n  : fulfilment === 'delivery' && !address\n    ? t('Please send your delivery address.', 'ابعتلي عنوان التوصيل.')\n    : t('Reply \"confirm\" to place your order.', 'اكتب \"تأكيد\" عشان نبدأ نحضّر طلبك.');\n\nconst hour = Number($now.setZone('Africa/Cairo').toFormat('H'));\nconst isOpen = hour >= OPEN_HOUR && hour < CLOSE_HOUR;\nconst order_id = 'F-' + $now.setZone('Africa/Cairo').toFormat('yyMMdd') + '-' + Math.random().toString(36).slice(2, 6).toUpperCase().padEnd(4, 'X');\n\nlet action = 'reply', reply = '';\nconst notes = [];\nconst intent = ai?.intent;\n\nif (!intent) {\n  action = 'human';\n  reply = t(\"Sorry, I couldn't read that one. A team member will reply here shortly.\", 'معلش مقدرتش أفهم الرسالة دي، حد من الفريق هيرد عليك هنا حالاً.');\n} else if (intent === 'greeting' || intent === 'menu') {\n  reply = (intent === 'greeting' ? t('Welcome to Fenjan!\\n\\n', 'أهلاً بيك في فنجان!\\n\\n') : '') + menuText();\n} else if (intent === 'order' || intent === 'details') {\n  if (ai.replace_cart) cart = [];\n  for (const id of (ai.remove || [])) {\n    cart = cart.filter(l => l.item_id !== String(id).trim().toUpperCase());\n  }\n  for (const it of (ai.items || [])) {\n    const id = String(it.item_id || '').trim().toUpperCase(), m = byId[id];\n    if (!m) { notes.push(t(`I couldn't find \"${it.item_id}\" on the menu.`, `مش لاقي \"${it.item_id}\" في المنيو.`)); continue; }\n    if (!isOn(m)) { notes.push(t(`${m.name_en} is not available today.`, `${m.name_ar} مش متاح النهاردة.`)); continue; }\n    const qty = Math.min(MAX_QTY, Math.max(1, parseInt(it.qty, 10) || 1));\n    const ex = cart.find(l => l.item_id === id);\n    if (ex) ex.qty = Math.min(MAX_QTY, ex.qty + qty);\n    else cart.push({ item_id: id, name: m.name_en, name_ar: m.name_ar || m.name_en, price: Number(m.price_egp) || 0, qty });\n  }\n  if (!cart.length) {\n    action = cartRow ? 'clear' : 'reply';\n    reply = (notes.length ? notes.join('\\n') + '\\n\\n' : '') + menuText();\n  } else {\n    action = 'cart';\n    reply = (notes.length ? notes.join('\\n') + '\\n\\n' : '') + t('Your order:\\n', 'طلبك:\\n') + cartText() + '\\n\\n' + nextStep();\n  }\n} else if (intent === 'confirm') {\n  if (!cart.length) {\n    reply = t('Your cart is empty. Tell me what you would like:\\n\\n', 'السلة فاضية، قولي تحب تطلب إيه:\\n\\n') + menuText();\n  } else if (!fulfilment || (fulfilment === 'delivery' && !address)) {\n    action = 'cart';\n    reply = t('Almost there! ', 'خلاص قربنا! ') + nextStep();\n  } else if (!isOpen) {\n    action = 'cart';\n    reply = t(`We are closed now (open ${OPEN_HOUR}:00 until midnight). Your cart is saved, confirm again when we open.`, `إحنا قافلين دلوقتي (بنفتح من ${OPEN_HOUR} الصبح لنص الليل). سلتك محفوظة، أكد تاني لما نفتح.`);\n  } else {\n    action = 'confirm';\n    reply = t(`Order ${order_id} confirmed!\\n\\n`, `تم تأكيد طلبك ${order_id}!\\n\\n`)\n      + cartText() + '\\n\\n'\n      + (fulfilment === 'delivery'\n        ? t(`Delivery to: ${address}\\nWe will message you when it is on the way.`, `التوصيل على: ${address}\\nهنبعتلك أول ما يخرج للتوصيل.`)\n        : t('We will message you when it is ready for pickup.', 'هنبعتلك أول ما يجهز للاستلام.'));\n  }\n} else if (intent === 'cancel') {\n  action = cartRow ? 'clear' : 'reply';\n  reply = t('Done, your cart is cleared. Send anything to start again.', 'تمام، السلة اتمسحت. ابعت أي حاجة ونبدأ من جديد.');\n} else if (intent === 'human') {\n  action = 'human';\n  reply = t('Sure, a team member will reply here shortly.', 'أكيد، حد من الفريق هيرد عليك هنا حالاً.');\n} else {\n  reply = (String(ai.answer || '').trim().slice(0, 600) || t('How can I help? Type \"menu\" to see what we have.', 'أقدر أساعدك إزاي؟ اكتب \"منيو\" تشوف عندنا إيه.'))\n    + (cart.length ? '\\n\\n' + t('Your cart:\\n', 'سلتك:\\n') + cartText() + '\\n\\n' + nextStep() : '');\n}\n\nreturn [{\n  json: {\n    action,\n    reply: reply.slice(0, 1986),\n    platform: msg.platform,\n    sender_id: msg.sender_id,\n    text: msg.text,\n    language: ar ? 'ar' : 'en',\n    order_id,\n    items_json: JSON.stringify(cart),\n    items_text: cart.map(l => `${l.qty}x ${l.name}`).join(', '),\n    subtotal: sub(),\n    delivery: fee(),\n    total: sub() + fee(),\n    fulfilment,\n    address,\n    now: $now.setZone('Africa/Cairo').toFormat('yyyy-MM-dd HH:mm'),\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        -64
+      ],
+      "id": "3e20e628-ad75-4940-9acb-2332131a570e",
+      "name": "Decide Reply"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "confirm",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "8fa912e1-0c02-4a2a-a42d-d07d99dad85d"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "confirm"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "fad6aed3-23ac-4426-b31b-d950d7a0bc2c",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "cart",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cart"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "67d43575-a17f-4010-bfc0-743102dc6122",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "clear",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "clear"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "f934e9ef-dd3e-4684-9f7b-58ccf682faf9",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "human",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "human"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "6c76fe3c-5d18-4281-9415-ae203c85ea71",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "reply",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "reply"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.5,
+      "position": [
+        1136,
+        -112
+      ],
+      "id": "e7eef237-4eee-4a7a-9805-efcec65d9d40",
+      "name": "Route Action"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Decide Reply').first().json;\nreturn [{\n  json: {\n    order_id: d.order_id,\n    created_at: d.now,\n    platform: d.platform,\n    customer_id: d.sender_id,\n    language: d.language,\n    items: d.items_text,\n    subtotal_egp: d.subtotal,\n    delivery_egp: d.delivery,\n    total_egp: d.total,\n    fulfilment: d.fulfilment,\n    address: d.address,\n    status: 'new',\n    updated_at: d.now\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        -400
+      ],
+      "id": "1f3b1289-17bc-4b25-9de4-74b4111694b2",
+      "name": "Order Row"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 755313971,
+          "mode": "list",
+          "cachedResultName": "Orders"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "order_id",
+              "displayName": "order_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "platform",
+              "displayName": "platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "customer_id",
+              "displayName": "customer_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "language",
+              "displayName": "language",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "items",
+              "displayName": "items",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "subtotal_egp",
+              "displayName": "subtotal_egp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "delivery_egp",
+              "displayName": "delivery_egp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total_egp",
+              "displayName": "total_egp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fulfilment",
+              "displayName": "fulfilment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "address",
+              "displayName": "address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1584,
+        -400
+      ],
+      "id": "f1be0ff6-e5a7-4769-a315-b68657b77f51",
+      "name": "Save Order",
+      "retryOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Decide Reply').first().json;\nreturn [{\n  json: {\n    customer_id: d.sender_id,\n    platform: d.platform,\n    items_json: '[]',\n    fulfilment: '',\n    address: '',\n    total_egp: 0,\n    status: 'closed',\n    updated_at: d.now\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1808,
+        -416
+      ],
+      "id": "d29b2e7e-5b92-4a85-bedf-3da221c73337",
+      "name": "Close Cart Row"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 579198438,
+          "mode": "list",
+          "cachedResultName": "Carts"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "customer_id"
+          ],
+          "schema": [
+            {
+              "id": "customer_id",
+              "displayName": "customer_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "platform",
+              "displayName": "platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "items_json",
+              "displayName": "items_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fulfilment",
+              "displayName": "fulfilment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "address",
+              "displayName": "address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total_egp",
+              "displayName": "total_egp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1984,
+        -416
+      ],
+      "id": "d16f115c-1a1d-416d-b0be-3ed44ab3cef3",
+      "name": "Close Cart",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_CHATID",
+        "text": "={{ 'New order ' + $('Decide Reply').first().json.order_id + ' (' + $('Decide Reply').first().json.platform + ')\\n' + $('Decide Reply').first().json.items_text + '\\n' + ($('Decide Reply').first().json.fulfilment === 'delivery' ? 'Delivery: ' + $('Decide Reply').first().json.address : 'Pickup at cafe') + '\\nTotal: ' + $('Decide Reply').first().json.total + ' EGP\\n\\nUpdate status: https://safeguard-couch-knelt.ngrok-free.dev/form/fenjan-kitchen' }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2144,
+        -416
+      ],
+      "id": "9b01d84a-cd98-448f-81c9-d8d219f81c16",
+      "name": "Kitchen Alert",
+      "webhookId": "d110198e-5756-4c80-954a-51f84802ba6e"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Decide Reply').first().json;\nreturn [{\n  json: {\n    customer_id: d.sender_id,\n    platform: d.platform,\n    items_json: d.items_json,\n    fulfilment: d.fulfilment,\n    address: d.address,\n    total_egp: d.total,\n    status: 'open',\n    updated_at: d.now\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        -224
+      ],
+      "id": "22cb7049-b44b-482c-b827-ef5c0eff6036",
+      "name": "Cart Row"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 579198438,
+          "mode": "list",
+          "cachedResultName": "Carts"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "customer_id"
+          ],
+          "schema": [
+            {
+              "id": "customer_id",
+              "displayName": "customer_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "platform",
+              "displayName": "platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "items_json",
+              "displayName": "items_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fulfilment",
+              "displayName": "fulfilment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "address",
+              "displayName": "address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total_egp",
+              "displayName": "total_egp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1584,
+        -224
+      ],
+      "id": "ae233341-aea4-439d-8aee-ed9c92288825",
+      "name": "Save Cart"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Decide Reply').first().json;\nreturn [{\n  json: {\n    customer_id: d.sender_id,\n    platform: d.platform,\n    items_json: '[]',\n    fulfilment: '',\n    address: '',\n    total_egp: 0,\n    status: 'closed',\n    updated_at: d.now\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        -64
+      ],
+      "id": "57f974a6-9bf2-412b-b989-47e227023cdb",
+      "name": "Empty Cart Row"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 579198438,
+          "mode": "list",
+          "cachedResultName": "Carts"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "customer_id"
+          ],
+          "schema": [
+            {
+              "id": "customer_id",
+              "displayName": "customer_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "platform",
+              "displayName": "platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "items_json",
+              "displayName": "items_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fulfilment",
+              "displayName": "fulfilment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "address",
+              "displayName": "address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total_egp",
+              "displayName": "total_egp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1584,
+        -64
+      ],
+      "id": "406fd38a-2587-426b-9be8-445b2a145c1d",
+      "name": "Empty Cart"
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_CHATID",
+        "text": "={{ 'A customer needs a person on ' + $('Decide Reply').first().json.platform + ':\\n\"' + $('Decide Reply').first().json.text + '\"\\n\\nReply from the page inbox in Meta Business Suite.' }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1376,
+        96
+      ],
+      "id": "ed06b65c-e74a-4cf3-863a-3b3e96e59a4f",
+      "name": "Call a Human",
+      "webhookId": "ca11ce5c-f706-4ff2-add0-a0e68a3641b5",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v25.0",
+        "node": "YOUR_NODE",
+        "edge": "messages",
+        "options": {
+          "queryParametersJson": "={{ JSON.stringify({ messaging_type: 'RESPONSE', recipient: JSON.stringify({ id: $('Decide Reply').first().json.sender_id }), message: JSON.stringify({ text: $('Decide Reply').first().json.reply }) }) }}"
+        }
+      },
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        2064,
+        0
+      ],
+      "id": "ae618266-3d0f-4c59-9aa2-15d7c05a4b96",
+      "name": "Send Reply"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Meta answers refused messages with a normal response, so turn them into a real error (it reaches Fenjan 2 and Telegram).\nconst r = $input.first().json;\nconst code = Number(r.statusCode || 0);\nif (code >= 400 || r.error) {\n  const why = String(r.error?.message || r.headers?.['www-authenticate'] || r.body || 'Unknown reason').slice(0, 300);\n  throw new Error('Meta did not deliver the reply to ' + $('Decide Reply').first().json.platform + ' customer ' + $('Decide Reply').first().json.sender_id + ': ' + why);\n}\nreturn [{ json: { delivered: true, message_id: r.message_id || '' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        0
+      ],
+      "id": "70751cb8-afd8-44c1-a40a-8c4eb75fe414",
+      "name": "Check Delivery"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}",
+        "messages": {
+          "messageValues": []
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        608,
+        -64
+      ],
+      "id": "f14edc3c-eb86-486c-b354-8e6545592d06",
+      "name": "AI Read Order",
+      "retryOnFail": true,
+      "maxTries": 3
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        608,
+        96
+      ],
+      "id": "f8a8382b-1cc0-45e9-bfd6-170e9f945442",
+      "name": "Groq"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        80,
+        -368
+      ],
+      "id": "d8bbfd9b-b250-4dec-a5bc-ca1df371aec6",
+      "name": "9am Daily"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 331142039,
+          "mode": "list",
+          "cachedResultName": "Menu"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        352,
+        -368
+      ],
+      "id": "66c9dac5-eac6-410d-b389-6d362c9a652c",
+      "name": "Read Menu 2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all().map(i => i.json).filter(r => String(r.available || '').toLowerCase() === 'yes');\nif (!items.length) return [];\nconst dayIndex = Math.floor(Date.now() / 86400000);\nconst pick = items[dayIndex % items.length];\nconst post = `صباح الخير من فنجان ☕\\nعرض النهاردة: ${pick.name_ar} (${pick.name_en}) بـ ${pick.price_egp} ج.م بس!\\n\\nابعتلنا رسالة هنا على الصفحة أو إنستجرام واطلبه دلوقتي (استلام أو دليفري) 🚀`;\nreturn [{ json: { message: post } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        -368
+      ],
+      "id": "24a18ff5-19ea-41a5-96e4-9d1db74c2d22",
+      "name": "Pick Special"
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v25.0",
+        "node": "YOUR_NODE",
+        "edge": "feed",
+        "options": {
+          "queryParametersJson": "={{ JSON.stringify({ message: $json.message }) }}"
+        }
+      },
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        816,
+        -368
+      ],
+      "id": "a08b9d65-b81a-446a-ba00-817061338a07",
+      "name": "Post to Page",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "content": "Daily Post\n",
+        "height": 208,
+        "width": 1024
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        16,
+        -416
+      ],
+      "id": "8e4b00db-f233-493a-86ea-2da1cef7d1e8",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "formTitle": "Fenjan kitchen — update an order",
+        "formDescription": "Receives data from the chef.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "order_id",
+              "placeholder": "F-261126-AB12",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "status",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "preparing"
+                  },
+                  {
+                    "option": "ready"
+                  },
+                  {
+                    "option": "out_for_delivery"
+                  },
+                  {
+                    "option": "cancelled"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "note",
+              "fieldType": "textarea",
+              "placeholder": "Note for the customer (optional)"
+            }
+          ]
+        },
+        "responseMode": "lastNode",
+        "options": {
+          "appendAttribution": false,
+          "path": "fenjan-kitchen"
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        432
+      ],
+      "id": "4be04c07-ac89-4f7a-9e06-00ba325a8d20",
+      "name": "Kitchen Update",
+      "webhookId": "069f2dc9-4b64-4e6f-9306-da0868a60132"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 755313971,
+          "mode": "list",
+          "cachedResultName": "Orders"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "order_id",
+              "lookupValue": "={{ $json.order_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        432
+      ],
+      "id": "4083f5dd-8de5-484a-b130-50f1e17f3c1c",
+      "name": "Find Order",
+      "alwaysOutputData": true,
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const f = $('Kitchen Update').first().json;\nconst id = String(f.order_id || '').trim().toUpperCase(), status = f.status, note = String(f.note || '').trim().slice(0, 300);\nconst o = $input.all().map(i => i.json).find(r => String(r.order_id || '').toUpperCase() === id);\nconst problems = [];\nif (!/^F-\\d{6}-[A-Z0-9]{4}$/.test(id)) problems.push('Order ID should look like F-261126-AB12');\nelse if (!o) problems.push(`Order ${id} was not found in the Orders sheet`);\nelse if (['cancelled'].includes(o.status) && status !== 'cancelled') problems.push(`Order ${id} is already cancelled`);\nif (o && status === 'out_for_delivery' && o.fulfilment !== 'delivery') problems.push(`Order ${id} is a pickup order`);\n\nconst ar = o?.language === 'ar';\nconst t = (en, a) => ar ? a : en;\nconst msgs = {\n  preparing: t(`We are preparing your order ${id} now.`, `بنحضر طلبك ${id} دلوقتي.`),\n  ready: t(`Your order ${id} is ready for pickup! See you at Fenjan.`, `طلبك ${id} جاهز للاستلام! مستنيينك في فنجان.`),\n  out_for_delivery: t(`Your order ${id} is on the way to ${o?.address || 'you'}.`, `طلبك ${id} في الطريق ليك على ${o?.address || 'عنوانك'}.`),\n  cancelled: t(`Sorry, we had to cancel order ${id}. Reply here and we will sort it out.`, `للأسف اضطرينا نلغي الطلب ${id}. رد علينا هنا وهنحلها.`),\n};\n\nreturn [{\n  json: {\n    ok: problems.length === 0,\n    problems,\n    order_id: id,\n    status,\n    customer_id: o?.customer_id || '',\n    platform: o?.platform || '',\n    message: (msgs[status] || '') + (note ? '\\n' + note : ''),\n    now: $now.setZone('Africa/Cairo').toFormat('yyyy-MM-dd HH:mm')\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        432
+      ],
+      "id": "05aa223f-7892-4fd2-8399-2f95d47e707b",
+      "name": "Check Order"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Nothing was changed",
+        "completionMessage": "={{ 'Please fix: ' + $json.problems.join('; ') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        848,
+        528
+      ],
+      "id": "1b787020-0961-405b-9467-700a988fa92e",
+      "name": "Rejected Page",
+      "webhookId": "a2ee5a76-a1fd-41c7-88e2-76e73b103f3c"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "60ebf6f7-2bb6-436b-9bad-fccf303286aa",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        624,
+        432
+      ],
+      "id": "6b097dca-6346-4e36-982e-aa6e2e824dc1",
+      "name": "Order OK?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const c = $('Check Order').first().json;\nreturn [{ json: { order_id: c.order_id, status: c.status, updated_at: c.now } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        336
+      ],
+      "id": "535f674f-b670-4157-b985-d483d20de4b1",
+      "name": "Status Row"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 755313971,
+          "mode": "list",
+          "cachedResultName": "Orders"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "order_id": "={{ $json.order_id }}",
+            "status": "={{ $json.status }}",
+            "updated_at": "={{ $json.updated_at }}"
+          },
+          "matchingColumns": [
+            "order_id"
+          ],
+          "schema": [
+            {
+              "id": "order_id",
+              "displayName": "order_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "platform",
+              "displayName": "platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "customer_id",
+              "displayName": "customer_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "language",
+              "displayName": "language",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "items",
+              "displayName": "items",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "subtotal_egp",
+              "displayName": "subtotal_egp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "delivery_egp",
+              "displayName": "delivery_egp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "total_egp",
+              "displayName": "total_egp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "fulfilment",
+              "displayName": "fulfilment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "address",
+              "displayName": "address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1072,
+        336
+      ],
+      "id": "681620a1-ad59-48fd-bb0a-5cc8448f82eb",
+      "name": "Update Order"
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v25.0",
+        "node": "YOUR_NODE",
+        "edge": "messages",
+        "options": {
+          "queryParametersJson": "={{ JSON.stringify({ messaging_type: 'RESPONSE', recipient: JSON.stringify({ id: $('Check Order').first().json.customer_id }), message: JSON.stringify({ text: $('Check Order').first().json.message }) }) }}"
+        }
+      },
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        1296,
+        336
+      ],
+      "id": "99eebf87-ddb9-45a8-944b-dd0f8aeb9ed5",
+      "name": "Message Customer"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "Customer notified",
+        "completionMessage": "={{ 'Order ' + $('Check Order').first().json.order_id + ' is now ' + $('Check Order').first().json.status }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        1520,
+        336
+      ],
+      "id": "11b81e6f-899f-4176-8059-669e11f620cf",
+      "name": "Done Page",
+      "webhookId": "55a255d8-5a49-442b-8f16-02ab63893ca0"
+    },
+    {
+      "parameters": {
+        "content": "Kitchen Progress \n",
+        "height": 400,
+        "width": 1824,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        288
+      ],
+      "id": "822947e0-fd3d-46f5-a722-bb1456cc8894",
+      "name": "Sticky Note1"
+    }
+  ],
+  "connections": {
+    "Messenger Trigger": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram Trigger": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Message": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Menu": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Cart": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build AI Prompt": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide Reply": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Action": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Order Row": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Order": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Close Cart Row": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Close Cart": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cart Row": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Empty Cart Row": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call a Human": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Empty Cart": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Cart": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kitchen Alert": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reply": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Read Order": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "9am Daily": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Menu 2": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick Special": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kitchen Update": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Order": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Order": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Order OK?": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status Row": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Order": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message Customer": {
+      "main": [
+        [
+          {
+            "node": "YOUR_NODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "LW2kyXRNR7IqK2YD",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "nodeGroups": []
+}

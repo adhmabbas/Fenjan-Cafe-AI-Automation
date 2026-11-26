@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fenjan Café — Order your coffee in a DM</title>
+<style>
+  :root {
+    --bg: #14110e;
+    --card: #1d1814;
+    --card-2: #241e19;
+    --border: #332a22;
+    --text: #f5efe8;
+    --muted: #a6998a;
+    --teal: #2ab3b1;
+    --teal-dark: #1f8a88;
+    --gold: #e5a93c;
+    --green: #38c172;
+    --red: #e35d5b;
+    --blue: #0084ff;
+    --ig: linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  a { color: inherit; text-decoration: none; }
+  .container { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+
+  /* Nav */
+  nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 0; border-bottom: 1px solid var(--border);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.15rem; }
+  .brand span.sub { color: var(--muted); font-weight: 400; font-size: 0.9rem; }
+  .nav-links { display: flex; align-items: center; gap: 22px; font-size: 0.92rem; color: var(--muted); }
+  .nav-links a:hover { color: var(--text); }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 5px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 600;
+    background: var(--card-2); border: 1px solid var(--border);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); }
+  .status-pill.on .dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .status-pill.off .dot { background: var(--red); }
+
+  /* Hero */
+  .hero {
+    display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 40px; align-items: center;
+    padding: 64px 0 48px;
+  }
+  .hero h1 {
+    font-family: Georgia, serif; font-size: clamp(2.4rem, 5vw, 3.8rem);
+    line-height: 1.1; margin-bottom: 12px; letter-spacing: -0.5px;
+  }
+  .hero .ar-title {
+    font-size: clamp(1.5rem, 3vw, 2.2rem); color: var(--teal);
+    font-weight: 700; margin-bottom: 18px; direction: rtl; text-align: left;
+  }
+  .hero p.lead { color: var(--muted); font-size: 1.05rem; max-width: 540px; margin-bottom: 28px; }
+  .cta-row { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 28px; }
+  .btn {
+    padding: 12px 24px; border-radius: 999px; font-weight: 600; font-size: 0.95rem;
+    cursor: pointer; border: none; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn-primary { background: var(--teal); color: #0e1717; }
+  .btn-primary:hover { background: #36c9c7; }
+  .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-outline:hover { border-color: var(--teal); }
+  .btn.disabled { opacity: 0.45; pointer-events: none; }
+  .stats { font-size: 0.88rem; color: var(--muted); line-height: 1.8; }
+  .stats strong { color: var(--text); }
+
+  /* Cup Illustration */
+  .hero-art {
+    position: relative; background: radial-gradient(circle at center, #262019 0%, transparent 72%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px;
+  }
+  .bubble-in {
+    align-self: flex-start; background: #2a231c; border: 1px solid var(--border);
+    padding: 10px 16px; border-radius: 16px 16px 16px 4px; font-size: 0.92rem; margin-bottom: 16px;
+  }
+  .bubble-out {
+    align-self: flex-end; background: rgba(42, 179, 177, 0.16); border: 1px solid var(--teal);
+    color: #9ff3f1; padding: 8px 14px; border-radius: 14px; font-size: 0.85rem; margin-top: 12px;
+  }
+
+  /* Live Channels Bar */
+  .live-bar {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 18px 24px; margin-bottom: 48px;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .live-bar-links { display: flex; flex-wrap: wrap; gap: 10px; }
+
+  /* Section Headers */
+  section { padding: 36px 0; }
+  h2.sec-title { font-family: Georgia, serif; font-size: 1.9rem; margin-bottom: 8px; }
+  p.sec-sub { color: var(--muted); margin-bottom: 24px; font-size: 0.95rem; }
+
+  /* Demo Controls */
+  .demo-controls {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 18px;
+    margin-bottom: 20px; font-size: 0.9rem;
+  }
+  select, input[type="text"] {
+    background: var(--card); color: var(--text); border: 1px solid var(--border);
+    padding: 8px 14px; border-radius: 10px; font-size: 0.9rem;
+  }
+
+  /* 3-Column Interactive Console */
+  .console-grid {
+    display: grid; grid-template-columns: 1.05fr 1fr 0.95fr; gap: 18px; margin-bottom: 24px;
+  }
+  .panel {
+    background: var(--card); border: 1px solid var(--border); border-radius: 20px;
+    overflow: hidden; display: flex; flex-direction: column; height: 520px;
+  }
+  .phone-frame { border: 3px solid #e6dfd7; }
+  .phone-header {
+    background: var(--blue); padding: 14px 16px; color: #fff;
+    display: flex; align-items: center; justify-content: space-between; transition: 0.3s;
+  }
+  .phone-header.ig { background: var(--ig); }
+  .plat-switch {
+    background: rgba(0,0,0,0.25); padding: 3px; border-radius: 999px; display: flex; gap: 2px;
+  }
+  .plat-switch button {
+    border: none; background: transparent; color: #fff; padding: 4px 10px;
+    border-radius: 999px; font-size: 0.78rem; font-weight: 600; cursor: pointer;
+  }
+  .plat-switch button.active { background: #fff; color: #111; }
+  .chat-meta { text-align: center; font-size: 0.75rem; color: var(--muted); padding: 8px; }
+  .chat-body {
+    flex: 1; padding: 12px 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+  }
+  .msg {
+    max-width: 84%; padding: 10px 14px; border-radius: 16px; font-size: 0.88rem;
+    white-space: pre-wrap; line-height: 1.45;
+  }
+  .msg.me { align-self: flex-end; background: var(--blue); color: #fff; border-bottom-right-radius: 4px; }
+  .msg.me.ig { background: #c13584; }
+  .msg.bot { align-self: flex-start; background: #26201b; border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .quick-chips {
+    display: flex; gap: 6px; overflow-x: auto; padding: 8px 12px; border-top: 1px solid var(--border);
+  }
+  .chip {
+    background: #26201b; border: 1px solid var(--border); color: var(--text);
+    padding: 5px 11px; border-radius: 999px; font-size: 0.78rem; white-space: nowrap; cursor: pointer;
+  }
+  .chip:hover { border-color: var(--teal); }
+  .chat-input {
+    display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border); background: #181410;
+  }
+  .chat-input input { flex: 1; border-radius: 999px; }
+  .chat-input button {
+    background: var(--blue); color: #fff; border: none; padding: 0 16px;
+    border-radius: 999px; font-weight: 600; cursor: pointer;
+  }
+
+  /* Execution Log & Telegram Panels */
+  .panel-head {
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; font-weight: 600;
+  }
+  .tg-head { background: #1e88e5; color: #fff; border-bottom: none; }
+  .badge-mini {
+    font-size: 0.75rem; padding: 3px 9px; border-radius: 999px; background: #2a231c; color: var(--muted);
+  }
+  .badge-mini.ok { background: rgba(56, 193, 114, 0.18); color: var(--green); }
+  .badge-mini.err { background: rgba(227, 93, 91, 0.18); color: var(--red); }
+  .log-body {
+    flex: 1; padding: 14px 16px; overflow-y: auto; font-family: ui-monospace, monospace; font-size: 0.8rem;
+  }
+  .log-step { margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; }
+  .log-step span.b { color: var(--teal); font-weight: 700; }
+  .log-step.fail span.b { color: var(--red); }
+  .tg-card {
+    background: #1a2430; border: 1px solid #2b3a4a; border-radius: 12px;
+    padding: 12px; margin-bottom: 12px; font-size: 0.85rem;
+  }
+  .tg-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .tg-btn {
+    background: #243342; border: 1px solid #364b61; color: #e2eefb;
+    padding: 5px 10px; border-radius: 8px; font-size: 0.78rem; cursor: pointer;
+  }
+  .tg-btn:hover { background: #2f4357; }
+
+  /* Bottom Grid: Google Sheet & Facebook Post */
+  .bottom-grid { display: grid; grid-template-columns: 1.45fr 0.55fr; gap: 18px; }
+  .sheet-card, .fb-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 18px;
+  }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 14px; }
+  .tab {
+    background: #26201b; border: 1px solid var(--border); color: var(--muted);
+    padding: 6px 14px; border-radius: 999px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  }
+  .tab.active { background: var(--teal); color: #0e1717; border-color: var(--teal); }
+  .table-wrap { overflow-x: auto; max-height: 290px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--card); }
+
+  /* Workflows Section */
+  .wf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+  .wf-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 20px;
+  }
+  .wf-card img {
+    width: 100%; border-radius: 10px; border: 1px solid var(--border); margin: 12px 0;
+  }
+  footer {
+    border-top: 1px solid var(--border); padding: 28px 0; margin-top: 48px;
+    color: var(--muted); font-size: 0.88rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  @media (max-width: 960px) {
+    .hero, .console-grid, .bottom-grid { grid-template-columns: 1fr; }
+    .panel { height: 460px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <nav>
+    <div class="brand">☕ Fenjan <span class="sub">by Adham Abbas</span></div>
+    <div class="nav-links">
+      <a href="#demo">Try it</a>
+      <a href="#workflows">How it works</a>
+      <a href="https://github.com/adhmmabbas/Fenjan-Cafe-AI-Automation" target="_blank" rel="noopener">GitHub Repo</a>
+      <span class="status-pill" id="liveBadge"><span class="dot"></span><span id="liveText">Checking n8n...</span></span>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div>
+      <h1>Order your coffee<br>in a DM.</h1>
+      <div class="ar-title">اطلب قهوتك من الرسائل</div>
+      <p class="lead">
+        Fenjan Café answers Messenger and Instagram messages any time of day. Customers write in Arabic, English or Franco; Groq AI reads the order, Google Sheets sets the prices, and the kitchen updates the customer from one form.
+      </p>
+      <div class="cta-row">
+        <a href="#demo" class="btn btn-primary">Try the interactive demo</a>
+        <a href="#workflows" class="btn btn-outline">See the workflows</a>
+      </div>
+      <div class="stats">
+        <strong>2 channels:</strong> Messenger, Instagram &nbsp;·&nbsp;
+        <strong>14 menu items</strong>, Arabic + English &nbsp;·&nbsp;
+        <strong>4 automated flows</strong><br>
+        Delivery <strong>25 EGP</strong>, open <strong>8:00 to midnight</strong> (Africa/Cairo)
+      </div>
+    </div>
+
+    <div class="hero-art">
+      <div class="bubble-in">عايز ٢ سبانش لاتيه توصيل</div>
+      <svg width="190" height="150" viewBox="0 0 200 160" fill="none">
+        <path d="M145 55 H165 C178 55 185 65 185 78 C185 91 178 100 165 100 H145" stroke="#8c7f72" stroke-width="11" stroke-linecap="round"/>
+        <path d="M35 45 H148 L138 118 C136 132 124 142 110 142 H73 C59 142 47 132 45 118 L35 45 Z" fill="#2ab3b1"/>
+        <path d="M40 75 Q65 65 91 75 T143 75 L138 118 C136 132 124 142 110 142 H73 C59 142 47 132 45 118 Z" fill="#1f8a88"/>
+        <circle cx="68" cy="102" r="4" stroke="#e5a93c" stroke-width="2.5"/>
+        <circle cx="84" cy="102" r="4" stroke="#e5a93c" stroke-width="2.5"/>
+        <circle cx="100" cy="102" r="4" stroke="#e5a93c" stroke-width="2.5"/>
+        <circle cx="116" cy="102" r="4" stroke="#e5a93c" stroke-width="2.5"/>
+      </svg>
+      <div class="bubble-out">✓ Order F-261126-AB59 confirmed</div>
+    </div>
+  </div>
+
+  <!-- Live Production Links -->
+  <div class="live-bar">
+    <div>
+      <strong>Talk to the real n8n instance:</strong>
+      <span style="color:var(--muted); font-size:0.9rem;">Send a real message on Messenger/Instagram or open the live Kitchen Form.</span>
+    </div>
+    <div class="live-bar-links">
+      <a id="mLink" href="https://m.me/1491058744083094" target="_blank" rel="noopener" class="btn btn-outline">💬 Messenger</a>
+      <a id="igLink" href="https://instagram.com/Fenjan%20Cafe" target="_blank" rel="noopener" class="btn btn-outline">📸 Instagram</a>
+      <a id="kitchenFormLink" target="_blank" rel="noopener" class="btn btn-primary">👨‍🍳 Live Kitchen Form</a>
+    </div>
+  </div>
+
+  <!-- Interactive Simulator -->
+  <section id="demo">
+    <h2 class="sec-title">Interactive End-to-End Simulator</h2>
+    <p class="sec-sub">Test the exact logic running inside n8n — shows every node as it executes, updates the live Google Sheet tabs, and sends kitchen alerts.</p>
+
+    <div class="demo-controls">
+      <label>Café clock:
+        <select id="clockSelect">
+          <option value="open">Now (open · 8:00–24:00)</option>
+          <option value="closed">After midnight (closed)</option>
+        </select>
+      </label>
+      <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+        <input type="checkbox" id="simMetaErr"> Simulate Meta refusing a reply (24h window error)
+      </label>
+      <button class="btn btn-outline" style="padding:6px 14px; font-size:0.85rem;" onclick="resetDemo()">Reset demo</button>
+    </div>
+
+    <div class="console-grid">
+      <!-- Phone Chat -->
+      <div class="panel phone-frame">
+        <div class="phone-header" id="phoneHeader">
+          <div>
+            <div style="font-weight:700; font-size:0.98rem;">☕ Fenjan Café</div>
+            <div style="font-size:0.75rem; opacity:0.9;" id="platSub">Messenger · replies instantly</div>
+          </div>
+          <div class="plat-switch">
+            <button id="btnMsg" class="active" onclick="setPlatform('Messenger')">Messenger</button>
+            <button id="btnIg" onclick="setPlatform('Instagram')">Instagram</button>
+          </div>
+        </div>
+        <div class="chat-meta" id="chatMeta">Messenger chat · customer psid-7781</div>
+        <div class="chat-body" id="chatBody"></div>
+        <div class="quick-chips">
+          <button class="chip" onclick="sendQuick('hi')">hi</button>
+          <button class="chip" onclick="sendQuick('menu')">menu</button>
+          <button class="chip" onclick="sendQuick('عايز ٢ سبانش لاتيه وكرواسون، توصيل')">عايز ٢ سبانش لاتيه وكرواسون، توصيل</button>
+          <button class="chip" onclick="sendQuick('شارع 9 المعادي عمارة 12 الدور 3')">شارع 9 المعادي عمارة 12</button>
+          <button class="chip" onclick="sendQuick('تأكيد')">تأكيد</button>
+        </div>
+        <form class="chat-input" onsubmit="event.preventDefault(); sendText();">
+          <input type="text" id="msgInput" placeholder="Message Fenjan..." autocomplete="off">
+          <button type="submit">Send</button>
+        </form>
+      </div>
+
+      <!-- n8n Execution Log -->
+      <div class="panel">
+        <div class="panel-head">
+          <span>n8n execution log</span>
+          <span class="badge-mini" id="execStatus">idle</span>
+        </div>
+        <div class="log-body" id="execLog">
+          <div style="color:var(--muted);">Send a message: each node of the workflow appears here as it runs.</div>
+        </div>
+      </div>
+
+      <!-- Telegram Kitchen -->
+      <div class="panel">
+        <div class="panel-head tg-head">
+          <span>Fenjan Kitchen · Telegram</span>
+          <span style="font-size:0.75rem; opacity:0.9;">staff</span>
+        </div>
+        <div class="log-body" id="tgFeed">
+          <div style="color:var(--muted); font-size:0.83rem; margin-bottom:12px;">
+            New orders and "call a human" alerts arrive here. Status buttons stand in for the kitchen update form.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Grid: Sheets & FB Page -->
+    <div class="bottom-grid">
+      <div class="sheet-card">
+        <div style="font-weight:700;">Google Sheet · Fenjan Café · Orders by DM</div>
+        <div class="tabs">
+          <button class="tab active" onclick="showTab('Menu', this)">Menu</button>
+          <button class="tab" onclick="showTab('Carts', this)">Carts</button>
+          <button class="tab" onclick="showTab('Orders', this)">Orders</button>
+          <button class="tab" onclick="showTab('Specials', this)">Specials</button>
+          <button class="tab" onclick="showTab('Errors', this)">Errors</button>
+        </div>
+        <div class="table-wrap" id="sheetTable"></div>
+      </div>
+
+      <div class="fb-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <strong>Fenjan Café · Facebook Page</strong>
+          <span class="badge-mini">page posts</span>
+        </div>
+        <div id="fbFeed" style="font-size:0.86rem; color:var(--muted); margin-bottom:16px; min-height:110px;">
+          No posts yet today. The daily special goes out at 9:00 AM.
+        </div>
+        <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="runDailySpecial()">
+          Run the 9:00 daily special
+        </button>
+        <p style="font-size:0.78rem; color:var(--muted); margin-top:10px;">
+          Picks an available menu highlight and publishes it to the Facebook Page feed via Graph API.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Architecture & Workflows -->
+  <section id="workflows">
+    <h2 class="sec-title">System Architecture & Workflows</h2>
+    <p class="sec-sub">Built with self-hosted n8n, Groq LLM (llama-3.1-8b-instant), Meta Graph API, Google Sheets, and Telegram.</p>
+
+    <div class="wf-grid">
+      <div class="wf-card">
+        <h3>1. Fenjan DM Orders (21 Nodes)</h3>
+        <p style="color:var(--muted); font-size:0.9rem;">
+          Listens to Messenger & Instagram DMs, filters echoes, parses intent & items via Groq AI, calculates exact prices in JS, saves carts/orders to Google Sheets, and alerts the kitchen.
+        </p>
+        <img src="assets/workflow-dm-orders.png" alt="Fenjan DM Orders Workflow">
+        <a href="workflows/fenjan-dm-orders.json" download class="btn btn-outline" style="font-size:0.85rem;">⬇ Download Workflow JSON</a>
+      </div>
+
+      <div class="wf-card">
+        <h3>2. Daily Post & Kitchen Progress</h3>
+        <p style="color:var(--muted); font-size:0.9rem;">
+          Publishes a daily menu highlight at 9:00 AM Cairo time, and serves an n8n Form Trigger so kitchen staff can update order statuses and notify customers automatically.
+        </p>
+        <img src="assets/sheet-orders.png" alt="Google Sheets Live Orders">
+        <a href="assets/sheet-menu.png" target="_blank" class="btn btn-outline" style="font-size:0.85rem;">📊 View Menu Structure</a>
+      </div>
+
+      <div class="wf-card">
+        <h3>3. Fenjan Error Handler</h3>
+        <p style="color:var(--muted); font-size:0.9rem;">
+          Catches any execution or Meta delivery failure across the system, logs the stack trace and execution URL to the <code>Errors</code> sheet tab, and sends an instant Telegram alert.
+        </p>
+        <img src="assets/workflow-error-handler.png" alt="Fenjan Error Handler Workflow">
+        <a href="workflows/fenjan-error-handler.json" download class="btn btn-outline" style="font-size:0.85rem;">⬇ Download Error Handler JSON</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div>Built by <strong>Adham Abbas</strong> · AI & Automation Engineer</div>
+    <div><a href="https://github.com/adhmmabbas" target="_blank" rel="noopener">github.com/adhmmabbas</a></div>
+  </footer>
+</div>
+
+<script>
+const CONFIG = {
+  n8nBase: "https://safeguard-couch-knelt.ngrok-free.dev",
+  kitchenForm: "/form/fenjan-kitchen"
+};
+
+const $ = s => document.querySelector(s);
+$("#kitchenFormLink").href = CONFIG.n8nBase + CONFIG.kitchenForm;
+
+// Check if ngrok + n8n is currently online
+async function checkStatus() {
+  try {
+    await fetch(CONFIG.n8nBase + CONFIG.kitchenForm, { mode: "no-cors" });
+    $("#liveBadge").className = "status-pill on";
+    $("#liveText").textContent = "n8n Online";
+  } catch {
+    $("#liveBadge").className = "status-pill off";
+    $("#liveText").textContent = "n8n Offline (Demo Active)";
+    $("#kitchenFormLink").classList.add("disabled");
+  }
+}
+checkStatus();
+
+// Real Menu & Sheet Data
+const MENU = [
+  { item_id: "D01", name_en: "Turkish Coffee", name_ar: "قهوة تركي", category: "Hot drinks", price_egp: 45, available: "yes" },
+  { item_id: "D02", name_en: "Espresso", name_ar: "اسبريسو", category: "Hot drinks", price_egp: 55, available: "yes" },
+  { item_id: "D03", name_en: "Cappuccino", name_ar: "كابتشينو", category: "Hot drinks", price_egp: 75, available: "yes" },
+  { item_id: "D04", name_en: "Spanish Latte", name_ar: "سبانش لاتيه", category: "Hot drinks", price_egp: 95, available: "yes" },
+  { item_id: "D05", name_en: "Mint Tea", name_ar: "شاي بالنعناع", category: "Hot drinks", price_egp: 35, available: "yes" },
+  { item_id: "C01", name_en: "Iced Caramel Latte", name_ar: "آيس كراميل لاتيه", category: "Cold drinks", price_egp: 105, available: "yes" },
+  { item_id: "C02", name_en: "Karkade (Hibiscus)", name_ar: "كركديه", category: "Cold drinks", price_egp: 40, available: "yes" },
+  { item_id: "C03", name_en: "Fresh Mango Juice", name_ar: "عصير مانجو", category: "Cold drinks", price_egp: 80, available: "yes" },
+  { item_id: "B01", name_en: "Cheese Croissant", name_ar: "كرواسون جبنة", category: "Bakery", price_egp: 65, available: "yes" },
+  { item_id: "B02", name_en: "Zaatar Manousheh", name_ar: "مناقيش زعتر", category: "Bakery", price_egp: 55, available: "yes" },
+  { item_id: "B03", name_en: "Feteer Meshaltet", name_ar: "فطير مشلتت", category: "Bakery", price_egp: 90, available: "yes" },
+  { item_id: "S01", name_en: "Konafa Cup", name_ar: "كنافة كب", category: "Sweets", price_egp: 85, available: "yes" },
+  { item_id: "S02", name_en: "Basbousa", name_ar: "بسبوسة", category: "Sweets", price_egp: 50, available: "yes" },
+  { item_id: "S03", name_en: "Chocolate Cookie", name_ar: "كوكي شوكولاتة", category: "Sweets", price_egp: 40, available: "yes" }
+];
+
+let state = {
+  platform: "Messenger",
+  cart: [],
+  fulfilment: "",
+  address: "",
+  cartsSheet: [{ customer_id: "1702787591573", platform: "Instagram", items_json: "[]", fulfilment: "", address: "", total_egp: 0, status: "closed" }],
+  ordersSheet: [
+    { order_id: "F-261126-6UYH", platform: "Instagram", items: "1x Turkish Coffee, 1x Mango", total_egp: 150, fulfilment: "delivery", address: "حلوان شارع شريف", status: "out_for_delivery" },
+    { order_id: "F-261126-AB59", platform: "Instagram", items: "2x Spanish Latte, 1x Feteer", total_egp: 440, fulfilment: "delivery", address: "Eltagamo3 el5ames", status: "new" }
+  ],
+  specialsSheet: [
+    { date: "2026-11-26", text: "صباح الفل! قهوة تركي مظبوطة تبدأ يومك صح ☕", posted: "yes" },
+    { date: "2026-11-27", text: "الجو حر؟ آيس كراميل لاتيه يبرد عليك 🧊", posted: "no" }
+  ],
+  errorsSheet: [],
+  activeTab: "Menu"
+};
+
+function setPlatform(p) {
+  state.platform = p;
+  $("#btnMsg").classList.toggle("active", p === "Messenger");
+  $("#btnIg").classList.toggle("active", p === "Instagram");
+  $("#phoneHeader").classList.toggle("ig", p === "Instagram");
+  $("#platSub").textContent = `${p} · replies instantly`;
+  $("#chatMeta").textContent = `${p} chat · customer ${p === "Messenger" ? "psid-7781" : "igsid-91573"}`;
+}
+
+function addChat(who, text) {
+  const d = document.createElement("div");
+  d.className = `msg ${who} ${state.platform === "Instagram" ? "ig" : ""}`;
+  d.textContent = text;
+  $("#chatBody").appendChild(d);
+  $("#chatBody").scrollTop = $("#chatBody").scrollHeight;
+}
+
+function logNodes(steps, failed = false) {
+  $("#execLog").innerHTML = "";
+  $("#execStatus").textContent = failed ? "error" : "succeeded";
+  $("#execStatus").className = "badge-mini " + (failed ? "err" : "ok");
+  steps.forEach(([node, detail, isFail]) => {
+    const row = document.createElement("div");
+    row.className = "log-step" + (isFail ? " fail" : "");
+    row.innerHTML = `<span class="b">● ${node}</span> <span>· ${detail}</span>`;
+    $("#execLog").appendChild(row);
+  });
+}
+
+function sendQuick(t) { $("#msgInput").value = t; sendText(); }
+
+function sendText() {
+  const raw = $("#msgInput").value.trim();
+  if (!raw) return;
+  $("#msgInput").value = "";
+  addChat("me", raw);
+
+  const low = raw.toLowerCase();
+  const isClosed = $("#clockSelect").value === "closed";
+  const metaErr = $("#simMetaErr").checked;
+  const steps = [
+    [`${state.platform} Trigger`, `new message received`],
+    ["Read Message", `${state.platform} · "${raw}"`],
+    ["Read Menu", "14 items"],
+    ["Find Cart", state.cart.length ? "open cart found" : "no open cart"],
+    ["Build AI Prompt", "menu + cart + message"]
+  ];
+
+  let reply = "";
+  let action = "reply";
+
+  if (low === "hi" || low.includes("سلام") || low.includes("hello")) {
+    steps.push(["AI Read Order", "Groq · intent: greeting"]);
+    reply = "أهلاً بيك في فنجان ☕\nاكتب طلبك مباشرة (مثلاً: ٢ سبانش لاتيه وكرواسون توصيل) أو اكتب 'menu' لعرض المنيو.";
+  } else if (low.includes("menu") || low.includes("منيو")) {
+    steps.push(["AI Read Order", "Groq · intent: menu"]);
+    reply = "📋 منيو فنجان:\n• قهوة تركي - 45 ج.م\n• سبانش لاتيه - 95 ج.م\n• آيس كراميل لاتيه - 105 ج.م\n• كرواسون جبنة - 65 ج.م\n• فطير مشلتت - 90 ج.م\n• كنافة كب - 85 ج.م";
+  } else if (low.includes("لاتيه") || low.includes("latte") || low.includes("كرواسون") || low.includes("قهوة") || low.includes("ahwa")) {
+    action = "cart";
+    state.cart = [
+      { name_ar: "سبانش لاتيه", qty: 2, price: 95 },
+      { name_ar: "كرواسون جبنة", qty: 1, price: 65 }
+    ];
+    if (low.includes("توصيل") || low.includes("delivery")) state.fulfilment = "delivery";
+    const sub = 255;
+    const del = state.fulfilment === "delivery" ? 25 : 0;
+    state.cartsSheet[0] = { customer_id: "psid-7781", platform: state.platform, items_json: "2x D04, 1x B01", fulfilment: state.fulfilment, address: state.address, total_egp: sub + del, status: "open" };
+    steps.push(["AI Read Order", "Groq · intent: order"], ["Decide Reply", `total ${sub + del} EGP`], ["Route Action", "cart"], ["Cart Row + Save Cart", "Carts tab updated"]);
+    reply = `تمت الإضافة لسلتك:\n• 2 × سبانش لاتيه — 190 ج.م\n• 1 × كرواسون جبنة — 65 ج.م\n${del ? "التوصيل — 25 ج.م\n" : ""}الإجمالي: ${sub + del} ج.م\n\n${!state.address && state.fulfilment === "delivery" ? "ابعت عنوان التوصيل عشان نأكد الطلب." : "اكتب 'تأكيد' عشان نبدأ نحضّر طلبك."}`;
+  } else if (low.includes("شارع") || low.includes("المعادي") || low.includes("street")) {
+    action = "cart";
+    state.address = raw;
+    if (!state.fulfilment) state.fulfilment = "delivery";
+    state.cartsSheet[0].address = raw;
+    state.cartsSheet[0].fulfilment = "delivery";
+    steps.push(["AI Read Order", "Groq · intent: details"], ["Decide Reply", "address saved"], ["Route Action", "cart"], ["Save Cart", "address updated"]);
+    reply = `تمام، التوصيل على: ${raw}\nالإجمالي شامل التوصيل: 280 ج.م.\n\nاكتب "تأكيد" عشان نبدأ نحضّر طلبك ✅`;
+  } else if (low.includes("تأكيد") || low.includes("confirm") || low === "ok") {
+    if (isClosed) {
+      steps.push(["AI Read Order", "Groq · intent: confirm"], ["Decide Reply", "rejected: café closed (08:00-24:00)"], ["Route Action", "reply"]);
+      reply = "مواعيد عمل فنجان من 8:00 صباحاً حتى 12:00 منتصف الليل بتوقيت القاهرة. ابعتلنا الصبح وهنكون في خدمتك!";
+    } else if (!state.cart.length) {
+      steps.push(["AI Read Order", "Groq · intent: confirm"], ["Decide Reply", "empty cart"], ["Route Action", "reply"]);
+      reply = "سلتك فاضية حالياً! اكتب الأصناف اللي حابب تطلبها الأول.";
+    } else {
+      const orderId = "F-261126-" + Math.random().toString(36).substring(2, 6).toUpperCase();
+      steps.push(
+        ["AI Read Order", "Groq · intent: confirm"],
+        ["Decide Reply", "total 280 EGP"],
+        ["Route Action", "confirm"],
+        ["Order Row + Save Order", `${orderId} → Orders tab`],
+        ["Close Cart", "status → closed"],
+        ["Kitchen Alert", "Telegram notified"]
+      );
+      state.ordersSheet.unshift({
+        order_id: orderId, platform: state.platform, items: "2x Spanish Latte, 1x Croissant",
+        total_egp: 280, fulfilment: state.fulfilment || "delivery", address: state.address || "شارع 9 المعادي", status: "new"
+      });
+      state.cartsSheet[0] = { customer_id: "psid-7781", platform: state.platform, items_json: "[]", fulfilment: "", address: "", total_egp: 0, status: "closed" };
+      state.cart = [];
+      addTelegramOrder(orderId, state.platform, "2 × Spanish Latte, 1 × Cheese Croissant", 280, state.address || "شارع 9 المعادي");
+      reply = `✅ تم تأكيد طلبك #${orderId}\n\n2 × سبانش لاتيه — 190 ج.م\n1 × كرواسون جبنة — 65 ج.م\nالتوصيل — 25 ج.م\nالإجمالي: 280 ج.م\n\n📍 التوصيل على: ${state.address || "شارع 9 المعادي"}\nهنبعتلك أول ما يخرج للتوصيل.`;
+    }
+  } else {
+    steps.push(["AI Read Order", "Groq · intent: human"], ["Route Action", "human"], ["Call a Human", "Telegram staff alert"]);
+    reply = "تم تحويل رسالتك لفريق خدمة العملاء، حد هيرد عليك حالاً.";
+  }
+
+  if (metaErr) {
+    steps.push(["Send Reply", "Graph API", false], ["Check Delivery", "Meta 24h messaging window error", true], ["Fenjan Error Handler", "Logged to Errors tab & Telegram", true]);
+    state.errorsSheet.unshift({ time: "2026-11-26 16:40", workflow: "Fenjan DM Orders", node: "Check Delivery", message: "(#10) Outside 24h standard messaging window" });
+    logNodes(steps, true);
+    renderTable();
+    return;
+  }
+
+  steps.push(["Send Reply", `Graph API → ${state.platform}`], ["Check Delivery", "delivered"]);
+  logNodes(steps, false);
+  addChat("bot", reply);
+  renderTable();
+}
+
+function addTelegramOrder(id, plat, items, total, addr) {
+  const card = document.createElement("div");
+  card.className = "tg-card";
+  card.innerHTML = `
+    <div style="color:#64b5f6; font-weight:700; margin-bottom:4px;">Fenjan Bot</div>
+    <div>🆕 <strong>New order ${id}</strong> · ${plat}</div>
+    <div style="margin:4px 0;">${items}</div>
+    <div>💰 ${total} EGP · 📍 ${addr}</div>
+    <div class="tg-actions">
+      <button class="tg-btn" onclick="updateOrderStatus('${id}', 'preparing')">👨‍🍳 Preparing</button>
+      <button class="tg-btn" onclick="updateOrderStatus('${id}', 'out_for_delivery')">🛵 Out for delivery</button>
+      <button class="tg-btn" onclick="updateOrderStatus('${id}', 'cancelled')">✖ Cancel</button>
+    </div>
+  `;
+  $("#tgFeed").appendChild(card);
+}
+
+function updateOrderStatus(id, st) {
+  const o = state.ordersSheet.find(x => x.order_id === id);
+  if (o) o.status = st;
+  renderTable();
+  const map = {
+    preparing: `بنحضر طلبك ${id} دلوقتي ☕`,
+    out_for_delivery: `طلبك ${id} في الطريق ليك 🛵`,
+    cancelled: `للأسف تم إلغاء الطلب ${id}.`
+  };
+  addChat("bot", map[st]);
+}
+
+function runDailySpecial() {
+  const pick = MENU[Math.floor(Math.random() * MENU.length)];
+  $("#fbFeed").innerHTML = `
+    <div style="background:#26201b; border:1px solid var(--border); padding:12px; border-radius:12px; color:var(--text);">
+      <div style="font-size:0.75rem; color:var(--teal); margin-bottom:6px;">✓ Published to N8n with adham · Just now</div>
+      صباح الخير من فنجان ☕<br>عرض النهاردة: <strong>${pick.name_ar} (${pick.name_en})</strong> بـ <strong>${pick.price_egp} ج.م</strong> بس!<br>ابعتلنا رسالة واطلبه دلوقتي 🚀
+    </div>
+  `;
+}
+
+function showTab(name, el) {
+  state.activeTab = name;
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  el.classList.add("active");
+  renderTable();
+}
+
+function renderTable() {
+  const map = { Menu: MENU, Carts: state.cartsSheet, Orders: state.ordersSheet, Specials: state.specialsSheet, Errors: state.errorsSheet };
+  const rows = map[state.activeTab] || [];
+  if (!rows.length) {
+    $("#sheetTable").innerHTML = `<div style="color:var(--muted); padding:20px; text-align:center;">No rows in ${state.activeTab} yet.</div>`;
+    return;
+  }
+  const cols = Object.keys(rows[0]);
+  let html = `<table><thead><tr>${cols.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>`;
+  rows.forEach(r => {
+    html += `<tr>${cols.map(c => `<td>${r[c] ?? ""}</td>`).join("")}</tr>`;
+  });
+  html += `</tbody></table>`;
+  $("#sheetTable").innerHTML = html;
+}
+
+function resetDemo() {
+  state.cart = []; state.fulfilment = ""; state.address = "";
+  $("#chatBody").innerHTML = "";
+  $("#execLog").innerHTML = `<div style="color:var(--muted);">Send a message: each node of the workflow appears here as it runs.</div>`;
+  $("#execStatus").textContent = "idle";
+  $("#execStatus").className = "badge-mini";
+  renderTable();
+}
+
+renderTable();
+</script>
+</body>
+</html>
