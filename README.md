@@ -15,7 +15,7 @@ An end-to-end AI customer service, order management, and kitchen operations syst
 
 | Interactive Live Portal | Live Orders Logged in Google Sheets |
 | :---: | :---: |
-| [<img src="assets/workflow-dm-orders.png" width="440"/>](https://adhmmabbas.github.io/Fenjan-Cafe-AI-Automation/) | [<img src="assets/sheet-orders.png" width="440"/>](assets/sheet-orders.png) |
+| [<img src="Screenshot%202026-11-26%20162959.png" width="440"/>](https://adhmmabbas.github.io/Fenjan-Cafe-AI-Automation/) | [<img src="Screenshot%202026-11-26%20163204.png" width="440"/>](Screenshot%202026-11-26%20163204.png) |
 
 ---
 
@@ -29,7 +29,7 @@ The system is organized into two modular workflows inside n8n:
 | **`Fenjan Error Handler`** | `Error Trigger` | Captures any workflow or Meta API delivery failure, logs execution details to the `Errors` sheet tab, and dispatches instant alerts via Telegram. |
 
 ### 1. Omnichannel DM Orders, Daily Post & Kitchen Progress
-![Fenjan DM Orders Workflow](assets/workflow-dm-orders.png)
+![Fenjan DM Orders Workflow](Screenshot%202026-11-26%20162959.png)
 
 * **AI Intent & Extraction (`Basic LLM Chain` + `Groq`):** Understands Egyptian Arabic, English, and Franco-Arabic (`"عايز ٢ سبانش لاتيه توصيل"` or `"3ayez 2 latte"`) and outputs strict JSON (`intent`, `items`, `fulfilment`, `address`, `language`).
 * **Zero-Hallucination Business Logic (`Decide Reply`):** Prices, 25 EGP delivery fee, item availability (`Menu` sheet), and Cairo operating hours (`08:00 – 24:00`) are enforced purely in JavaScript.
@@ -42,7 +42,7 @@ The system is organized into two modular workflows inside n8n:
 * **Kitchen Progress Form (`Kitchen Update`):** Staff update status (`preparing`, `out_for_delivery`, `cancelled`) via an n8n Form; the workflow validates the order ID and messages the customer on their original platform.
 
 ### 2. Centralized Error Monitoring
-![Fenjan Error Handler Workflow](assets/workflow-error-handler.png)
+![Fenjan Error Handler Workflow](Screenshot%202026-11-26%20162905.png)
 
 * Linked as the **Error Workflow** for `Fenjan DM Orders` and triggered automatically if Meta rejects a reply (e.g., outside the 24-hour messaging window) or any API call fails.
 
@@ -62,7 +62,7 @@ The system is organized into two modular workflows inside n8n:
 
 ## 🚀 Quick Setup (Self-Hosted n8n)
 
-1. **Import Workflows:** Download [`fenjan-dm-orders.json`](workflows/fenjan-dm-orders.json) and [`fenjan-error-handler.json`](workflows/fenjan-error-handler.json) and import them into your n8n instance (`Africa/Cairo` timezone).
+1. **Import Workflows:** Download [`fenjan-dm-orders.json`](Fenjan%20DM%20Orders.json) and [`fenjan-error-handler.json`](Fenjan%20Error%20Handler.json) and import them into your n8n instance (`Africa/Cairo` timezone).
 2. **Configure Credentials:**
    * **Groq API:** Connect your Groq API key (`llama-3.1-8b-instant`).
    * **Meta Graph API:** Connect `Facebook Graph API (App)` for Messenger/Instagram triggers and `Facebook Graph API` (Page Token with `pages_messaging` & `pages_manage_posts`) for replies and daily posts.
